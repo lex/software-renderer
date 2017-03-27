@@ -34,15 +34,24 @@
     (swap x0 x1)
     (swap y0 y1))
 
+  (define dx (- x1 x0))
+  (define dy (- y1 y0))
+  (define derror-squared (* (abs dy) 2))
+  (define error-squared 0)
+  (define y y0)
+
   (send dc set-pen (pen-from-color "red"))
 
   (for ([x (in-range x0 (+ x1 1))])
-    (define t (/ (- x x0) (- x1 x0)))
-    (define y (+ (* y0 (- 1.0 t)) (* y1 t)))
-
     (if 'steep
         (send dc draw-point y x)
-        (send dc draw-point x y))))
+        (send dc draw-point x y))
+
+    (set! error-squared (+ error-squared derror-squared))
+
+    (when (> error-squared dx)
+      (set! y (+ y (if (> y1 y0) 1 -1)))
+      (set! error-squared (- error-squared (* dx 2))))))
 
 (new canvas% [parent frame]
              [paint-callback
