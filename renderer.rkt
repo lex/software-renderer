@@ -19,48 +19,60 @@
 (define (pen-from-color color)
   (cond
     [(eq? color "red") (create-pen 255 0 0 1)]
+    [(eq? color "orange") (create-pen 251 150 51 1)]
     [(eq? color "black") (create-pen 0 0 0 1)]
     [else (create-pen 0 255 0 1)]))
 
-(define (draw-line dc x0 y0 x1 y1)
-  (define steep #false)
+(define (read-model file-name)
+  (define lines (file->lines file-name #:mode 'text))
 
-  (when (< (abs (- x0 x1)) (abs (- y0 y1)))
-    (swap x0 y0)
-    (swap x1 y1)
-    (set! steep #true))
+  (define vertex-lines (filter (lambda (line) (string-prefix? line "v ")) lines))
+  (define face-lines (filter (lambda (line) (string-prefix? line "f ")) lines))
 
-  (when (> x0 x1)
-    (swap x0 x1)
-    (swap y0 y1))
+  (define vertices (map (lambda (line)
+                          (let ([splits (string-split (string-trim line "v "))])
+                            (list
+                             (string->number (list-ref splits 0))
+                             (string->number (list-ref splits 1))
+                             (string->number (list-ref splits 2))))) vertex-lines))
 
-  (define dx (- x1 x0))
-  (define dy (- y1 y0))
-  (define derror-squared (* (abs dy) 2))
-  (define error-squared 0)
-  (define y y0)
+  (define faces (map (lambda (line)
+                       (let ([splits (string-split (string-trim line "f "))])
+                         (map (lambda (split)
+                                (let ([face (string-split split "/")])
+                                  (- (string->number (list-ref face 0)) 1))) splits))) face-lines))
 
-  (send dc set-pen (pen-from-color "red"))
+  (cons vertices faces))
 
-  (for ([x (in-range x0 (+ x1 1))])
-    (if 'steep
-        (send dc draw-point y x)
-        (send dc draw-point x y))
-
-    (set! error-squared (+ error-squared derror-squared))
-
-    (when (> error-squared dx)
-      (set! y (+ y (if (> y1 y0) 1 -1)))
-      (set! error-squared (- error-squared (* dx 2))))))
+;; load face
+(define model (read-model "african_head.obj"))
+(define vertices (car model))
+(define faces (cdr model))
 
 (new canvas% [parent frame]
              [paint-callback
               (lambda (canvas dc)
+
+                ;; draw background
                 (send dc set-pen (pen-from-color "black"))
                 (send dc set-brush "black" 'solid)
                 (send dc draw-rectangle 0 0 WIDTH HEIGHT)
-                (draw-line dc 13 20 80 40)
-                (draw-line dc 40 50 80 90)
-                (draw-line dc 100 10 50 60))])
+
+                ;; draw face
+                (send dc set-pen (pen-from-color "orange"))
+
+                (for-each (lambda (face)
+                  (for ([i (in-range 0 3)])
+                    (define v0 (list-ref vertices
+                                         (list-ref face i)))
+                    (define v1 (list-ref vertices (list-ref face (modulo (+ i 1) 3))))
+
+                    (define x0 (/ (* (+ (list-ref v0 0) 1) WIDTH) 2))
+                    (define y0 (/ (* (+ (list-ref v0 1) 1) HEIGHT) 2))
+
+                    (define x1 (/ (* (+ (list-ref v1 0) 1) WIDTH) 2))
+                    (define y1 (/ (* (+ (list-ref v1 1) 1) HEIGHT) 2))
+
+                    (send dc draw-line x0 y0 x1 y1))) faces))])
 
 (send frame show #t)
