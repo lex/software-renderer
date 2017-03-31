@@ -1,5 +1,8 @@
 #lang racket/gui
 
+(struct vec (x y))
+(struct vec3 (x y z))
+
 (define WIDTH 640)
 (define HEIGHT 480)
 
@@ -31,7 +34,7 @@
 
   (define vertices (map (lambda (line)
                           (let ([splits (string-split (string-trim line "v "))])
-                            (list
+                            (vec3
                              (string->number (list-ref splits 0))
                              (string->number (list-ref splits 1))
                              (string->number (list-ref splits 2))))) vertex-lines))
@@ -63,16 +66,12 @@
 
                 (for-each (lambda (face)
                   (for ([i (in-range 0 3)])
-                    (define v0 (list-ref vertices
-                                         (list-ref face i)))
-                    (define v1 (list-ref vertices (list-ref face (modulo (+ i 1) 3))))
-
-                    (define x0 (/ (* (+ (list-ref v0 0) 1) WIDTH) 2))
-                    (define y0 (/ (* (+ (list-ref v0 1) 1) HEIGHT) 2))
-
-                    (define x1 (/ (* (+ (list-ref v1 0) 1) WIDTH) 2))
-                    (define y1 (/ (* (+ (list-ref v1 1) 1) HEIGHT) 2))
-
-                    (send dc draw-line x0 y0 x1 y1))) faces))])
+                    (let* ([v0 (list-ref vertices (list-ref face i))]
+                           [v1 (list-ref vertices (list-ref face (modulo (+ i 1) 3)))]
+                           [x0 (/ (* (+ (vec3-x v0) 1) WIDTH) 2)]
+                           [y0 (/ (* (+ (vec3-y v0) 1) HEIGHT) 2)]
+                           [x1 (/ (* (+ (vec3-x v1) 1) WIDTH) 2)]
+                           [y1 (/ (* (+ (vec3-y v1) 1) HEIGHT) 2)])
+                      (send dc draw-line x0 y0 x1 y1)))) faces))])
 
 (send frame show #t)
